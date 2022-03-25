@@ -32,6 +32,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.collection.ArraySet;
 
@@ -78,7 +79,7 @@ public final class GoBackend implements Backend {
 
     private static native void wgTurnOff(int handle);
 
-    private static native int wgTurnOn(String ifName, int tunFd, String settings);
+    private static native int wgTurnOn(String ifName, int tunFd, String settings, String socketType);
 
     private static native String wgVersion();
 
@@ -181,6 +182,11 @@ public final class GoBackend implements Backend {
      */
     @Override
     public State setState(final Tunnel tunnel, State state, @Nullable final Config config) throws Exception {
+        return setState(tunnel, state, config, "udp");
+    }
+
+    public State setState(final Tunnel tunnel, State state, @Nullable final Config config,
+                          @NonNull final String socketType) throws Exception {
         final State originalState = getState(tunnel);
 
         if (state == State.TOGGLE)
@@ -191,21 +197,22 @@ public final class GoBackend implements Backend {
             final Config originalConfig = currentConfig;
             final Tunnel originalTunnel = currentTunnel;
             if (currentTunnel != null)
-                setStateInternal(currentTunnel, null, State.DOWN);
+                setStateInternal(currentTunnel, null, State.DOWN, socketType);
             try {
-                setStateInternal(tunnel, config, state);
+                setStateInternal(tunnel, config, state, socketType);
             } catch (final Exception e) {
                 if (originalTunnel != null)
-                    setStateInternal(originalTunnel, originalConfig, State.UP);
+                    setStateInternal(originalTunnel, originalConfig, State.UP, socketType);
                 throw e;
             }
         } else if (state == State.DOWN && tunnel == currentTunnel) {
-            setStateInternal(tunnel, null, State.DOWN);
+            setStateInternal(tunnel, null, State.DOWN, socketType);
         }
         return getState(tunnel);
     }
 
-    private void setStateInternal(final Tunnel tunnel, @Nullable final Config config, final State state)
+    private void setStateInternal(final Tunnel tunnel, @Nullable final Config config,
+                                  final State state, @NonNull final String socketType)
             throws Exception {
         Log.i(TAG, "Bringing tunnel " + tunnel.getName() + ' ' + state);
 
@@ -304,7 +311,7 @@ public final class GoBackend implements Backend {
                 if (tun == null)
                     throw new BackendException(Reason.TUN_CREATION_ERROR);
                 Log.d(TAG, "Go backend " + wgVersion());
-                currentTunnelHandle = wgTurnOn(tunnel.getName(), tun.detachFd(), goConfig);
+                currentTunnelHandle = wgTurnOn(tunnel.getName(), tun.detachFd(), goConfig, socketType);
             }
             if (currentTunnelHandle < 0)
                 throw new BackendException(Reason.GO_ACTIVATION_ERROR_CODE, currentTunnelHandle);

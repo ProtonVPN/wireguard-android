@@ -73,7 +73,7 @@ func init() {
 }
 
 //export wgTurnOn
-func wgTurnOn(interfaceName string, tunFd int32, settings string) int32 {
+func wgTurnOn(interfaceName string, tunFd int32, settings string, socketType string) int32 {
 	tag := cstring("WireGuard/GoBackend/" + interfaceName)
 	logger := &device.Logger{
 		Verbosef: AndroidLogger{level: C.ANDROID_LOG_DEBUG, tag: tag}.Printf,
@@ -88,7 +88,7 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string) int32 {
 	}
 
 	logger.Verbosef("Attaching to interface %v", name)
-	device := device.NewDevice(tun, conn.NewStdNetBind(), logger)
+	device := device.NewDevice(tun, conn.CreateStdNetBind(socketType), logger)
 
 	err = device.IpcSet(settings)
 	if err != nil {
