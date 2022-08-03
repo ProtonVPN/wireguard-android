@@ -1,0 +1,20 @@
+default:
+  image: ${CI_REGISTRY}/android/shared/docker-android/ndk:v1.1.0
+  before_script:
+    - if [[ -f /load-env.sh ]]; then source /load-env.sh; fi
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+stages:
+  - build
+
+build library:
+  stage: build
+  script:
+    - pwd
+    - ./gradlew :tunnel:assembleRelease
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - tunnel/build/outputs/aar/
