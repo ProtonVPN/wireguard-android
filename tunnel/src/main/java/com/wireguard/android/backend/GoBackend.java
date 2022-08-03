@@ -80,6 +80,9 @@ public final class GoBackend implements Backend {
 
     private static native void wgTurnOff(int handle);
 
+    private static native int wgSetNetworkAvailable(int handle, boolean active);
+    private static native int wgGetState(int handle);
+
     private static native int wgTurnOn(String ifName, int tunFd, String settings, String socketType);
 
     private static native String wgVersion();
@@ -177,6 +180,14 @@ public final class GoBackend implements Backend {
         if (key != null)
             stats.add(key, rx, tx, latestHandshakeMSec);
         return stats;
+    }
+
+    public void setNetworkAvailable(final boolean available) {
+        wgSetNetworkAvailable(currentTunnelHandle, available);
+    }
+
+    public int getState() {
+        return wgGetState(currentTunnelHandle);
     }
 
     /**
@@ -337,9 +348,6 @@ public final class GoBackend implements Backend {
 
             currentTunnel = tunnel;
             currentConfig = config;
-
-            service.protect(wgGetSocketV4(currentTunnelHandle));
-            service.protect(wgGetSocketV6(currentTunnelHandle));
         } else {
             if (currentTunnelHandle == -1) {
                 Log.w(TAG, "Tunnel already down");
