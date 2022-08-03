@@ -46,8 +46,9 @@ func (l AndroidLogger) Printf(format string, args ...interface{}) {
 }
 
 type TunnelHandle struct {
-	device *device.Device
-	uapi   net.Listener
+	manager *device.WireGuardStateManager
+	device  *device.Device
+	uapi    net.Listener
 }
 
 var tunnelHandles map[int32]TunnelHandle
@@ -75,10 +76,11 @@ func init() {
 //export wgTurnOn
 func wgTurnOn(interfaceName string, tunFd int32, settings string, socketType string) int32 {
 	tag := cstring("WireGuard/GoBackend/" + interfaceName)
-	logger := &device.Logger{
+	connLogger := conn.Logger{
 		Verbosef: AndroidLogger{level: C.ANDROID_LOG_DEBUG, tag: tag}.Printf,
 		Errorf:   AndroidLogger{level: C.ANDROID_LOG_ERROR, tag: tag}.Printf,
 	}
+	logger := &device.Logger{connLogger}
 
 	tun, name, err := tun.CreateUnmonitoredTUNFromFD(int(tunFd))
 	if err != nil {
@@ -88,7 +90,9 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string, socketType str
 	}
 
 	logger.Verbosef("Attaching to interface %v", name)
-	device := device.NewDevice(tun, conn.CreateStdNetBind(socketType), logger)
+	manager := device.NewWireGuardStateManager(logger, socketType)
+	device := device.NewDevice(tun, conn.CreateStdNetBind(socketType, &connLogger, manager.SocketErrChan),
+		logger, manager.HandshakeStateChan)
 
 	err = device.IpcSet(settings)
 	if err != nil {
@@ -121,15 +125,6 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string, socketType str
 		}
 	}
 
-	err = device.Up()
-	if err != nil {
-		logger.Errorf("Unable to bring up device: %v", err)
-		uapiFile.Close()
-		device.Close()
-		return -1
-	}
-	logger.Verbosef("Device started")
-
 	var i int32
 	for i = 0; i < math.MaxInt32; i++ {
 		if _, exists := tunnelHandles[i]; !exists {
@@ -142,7 +137,8 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string, socketType str
 		device.Close()
 		return -1
 	}
-	tunnelHandles[i] = TunnelHandle{device: device, uapi: uapi}
+	manager.Start(device)
+	tunnelHandles[i] = TunnelHandle{device: device, uapi: uapi, manager: manager}
 	return i
 }
 
@@ -157,6 +153,26 @@ func wgTurnOff(tunnelHandle int32) {
 		handle.uapi.Close()
 	}
 	handle.device.Close()
+	handle.manager.Close()
+}
+
+//export wgSetNetworkAvailable
+func wgSetNetworkAvailable(tunnelHandle int32, available int) int {
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		return -1
+	}
+	handle.manager.SetNetworkAvailable(available != 0)
+	return 0
+}
+
+//export wgGetState
+func wgGetState(tunnelHandle int32) int {
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		return -1
+	}
+	return int(handle.manager.GetState())
 }
 
 //export wgGetSocketV4

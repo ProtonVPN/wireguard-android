@@ -10,6 +10,8 @@
 struct go_string { const char *str; long n; };
 extern int wgTurnOn(struct go_string ifname, int tun_fd, struct go_string settings, struct go_string socket_type);
 extern void wgTurnOff(int handle);
+extern int wgSetNetworkAvailable(int handle, int available);
+extern int wgGetState(int handle);
 extern int wgGetSocketV4(int handle);
 extern int wgGetSocketV6(int handle);
 extern char *wgGetConfig(int handle);
@@ -41,6 +43,16 @@ JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgTurnOn(JNI
 JNIEXPORT void JNICALL Java_com_wireguard_android_backend_GoBackend_wgTurnOff(JNIEnv *env, jclass c, jint handle)
 {
 	wgTurnOff(handle);
+}
+
+JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgSetNetworkAvailable(JNIEnv *env, jclass c, jint handle, jboolean available)
+{
+	return wgSetNetworkAvailable(handle, available);
+}
+
+JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgGetState(JNIEnv *env, jclass c, jint handle)
+{
+    return wgGetState(handle);
 }
 
 JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgGetSocketV4(JNIEnv *env, jclass c, jint handle)
