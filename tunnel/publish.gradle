@@ -1,12 +1,16 @@
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
+ext {
+    githubRepo = "github.com/ProtonVPN/wireguard-android"
+}
+
 afterEvaluate {
     publishing {
         publications {
             release(MavenPublication) {
-                groupId = groupName
-                artifactId = 'tunnel'
+                groupId = 'me.proton.vpn'
+                artifactId = 'wireguard-android'
                 version wireguardVersionName
 
                 artifact sourcesJar
@@ -27,9 +31,9 @@ afterEvaluate {
                         }
                     }
                     scm {
-                        connection = 'scm:git:https://git.zx2c4.com/wireguard-android'
-                        developerConnection = 'scm:git:https://git.zx2c4.com/wireguard-android'
-                        url = 'https://git.zx2c4.com/wireguard-android'
+                        connection = "scm:git:git://${githubRepo}.git"
+                        developerConnection = "scm:git:ssh://${githubRepo}.git"
+                        url = "https://${githubRepo}"
                     }
                     developers {
                         organization {
@@ -39,6 +43,11 @@ afterEvaluate {
                         developer {
                             name = 'WireGuard'
                             email = 'team@wireguard.com'
+                        }
+                        developer {
+                            id = "opensource@proton.me"
+                            name = "Open Source Proton"
+                            email = "opensource@proton.me"
                         }
                     }
                 }
@@ -77,6 +86,8 @@ android.libraryVariants.all { variant ->
 }
 
 signing {
-    useGpgCmd()
+    def signingKey = findProperty("signingKey")
+    def signingPassword = findProperty("signingPassword")
+    useInMemoryPgpKeys(signingKey, signingPassword)
     sign publishing.publications
 }

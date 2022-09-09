@@ -8,13 +8,25 @@ variables:
 
 stages:
   - build
+  - publish
 
 build library:
   stage: build
+  tags:
+    - large
   script:
-    - pwd
     - ./gradlew :tunnel:assembleRelease
   artifacts:
     expire_in: 1 week
     paths:
       - tunnel/build/outputs/aar/
+
+publish library:
+  stage: publish
+  tags:
+    - small
+  when: manual
+  only:
+    - /^release\/.+$/
+  script:
+    - ./gradlew publish

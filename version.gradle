@@ -1,6 +1,31 @@
 buildscript {
     ext {
-        wireguardVersionCode = 491
-        wireguardVersionName = '1.0.20211029'
+        // Original values from WireGuard
+        wireguardVersionCode_ = 491
+        wireguardVersionName_ = '1.0.20211029' // We assume it's also a tag
+
+        exec = { cmd ->
+            def out = new StringBuffer()
+            def err = new StringBuffer()
+            def proc = cmd.execute()
+            proc.waitForProcessOutput(out, err)
+            if (proc.exitValue() != 0)
+                throw new GradleScriptException("Error executing: ${cmd}", new RuntimeException(err.toString()))
+            return out.toString()
+        }
+
+        countProtonCommits = {
+            return exec(["bash", "-c", "git log --first-parent ${wireguardVersionName_}..HEAD --oneline | wc -l"]).trim().toInteger()
+        }
+
+        getProtonVersionName = {
+            // We assume wireguardVersionTag is also a tag
+            return "${wireguardVersionName_}.${countProtonCommits()}"
+        }
+
+        // Versions for Proton lib
+        wireguardVersionCode = wireguardVersionCode_ * 1000 + countProtonCommits()
+        wireguardVersionName = getProtonVersionName()
     }
 }
+
