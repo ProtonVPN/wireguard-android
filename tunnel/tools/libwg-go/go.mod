@@ -8,7 +8,9 @@ require (
 )
 
 require (
-    github.com/refraction-networking/utls v1.0.0 // indirect
+    github.com/andybalholm/brotli v1.0.4 // indirect
+    github.com/klauspost/compress v1.15.9 // indirect
+    github.com/refraction-networking/utls v1.1.5 // indirect
 	golang.org/x/crypto v0.7.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
