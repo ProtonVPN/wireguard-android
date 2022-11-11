@@ -56,7 +56,7 @@ afterEvaluate {
         repositories {
             maven {
                 name = "sonatype"
-                url = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
+                url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
                 credentials {
                     username = hasProperty('SONATYPE_USER') ? getProperty('SONATYPE_USER') : System.getenv('SONATYPE_USER')
                     password = hasProperty('SONATYPE_PASSWORD') ? getProperty('SONATYPE_PASSWORD') : System.getenv('SONATYPE_PASSWORD')
