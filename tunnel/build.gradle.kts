@@ -1,6 +1,7 @@
 @file:Suppress("UnstableApiUsage")
 
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import java.io.ByteArrayOutputStream
 
 val pkg: String = providers.gradleProperty("wireguardPackageName").get()
 
@@ -9,6 +10,31 @@ plugins {
     `maven-publish`
     signing
 }
+
+val wireguardVersionName = providers.gradleProperty("wireguardVersionName").get()
+val wireguardVersionCode = providers.gradleProperty("wireguardVersionCode").get().toInt()
+
+val exec = { commandLine: String ->
+    val output = ByteArrayOutputStream()
+    output.use { outputStream ->
+        exec {
+            standardOutput = outputStream
+            commandLine("bash", "-c", commandLine)
+        }
+    }
+    String(output.toByteArray()).trim()
+}
+
+val countProtonCommits = {
+    exec("git log --first-parent $wireguardVersionName..HEAD --oneline | wc -l").toInt()
+}
+
+val getProtonVersionName = {
+    "$wireguardVersionName.${countProtonCommits()}"
+}
+
+extra["protonWireguardVersionCode"] = wireguardVersionCode * 1000 + countProtonCommits()
+extra["protonWireguardVersionName"] = getProtonVersionName()
 
 android {
     compileSdk = 33
@@ -72,11 +98,12 @@ dependencies {
 }
 
 publishing {
+    val githubRepo = "github.com/ProtonVPN/wireguard-android"
     publications {
         register<MavenPublication>("release") {
-            groupId = pkg
-            artifactId = "tunnel"
-            version = providers.gradleProperty("wireguardVersionName").get()
+            groupId = "me.proton.vpn"
+            artifactId = "wireguard-android"
+            version = extra["protonWireguardVersionName"] as String
             afterEvaluate {
                 from(components["release"])
             }
@@ -93,9 +120,9 @@ publishing {
                     }
                 }
                 scm {
-                    connection.set("scm:git:https://git.zx2c4.com/wireguard-android")
-                    developerConnection.set("scm:git:https://git.zx2c4.com/wireguard-android")
-                    url.set("https://git.zx2c4.com/wireguard-android")
+                    connection.set("scm:git:git://${githubRepo}.git")
+                    developerConnection.set("scm:git:ssh://${githubRepo}.git")
+                    url.set("https://${githubRepo}")
                 }
                 developers {
                     organization {
@@ -106,6 +133,11 @@ publishing {
                         name.set("WireGuard")
                         email.set("team@wireguard.com")
                     }
+                    developer {
+                        id.set("opensource@proton.me")
+                        name.set("Open Source Proton")
+                        email.set("opensource@proton.me")
+                    }
                 }
             }
         }
@@ -113,7 +145,7 @@ publishing {
     repositories {
         maven {
             name = "sonatype"
-            url = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
+            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
             credentials {
                 username = providers.environmentVariable("SONATYPE_USER").orNull
                 password = providers.environmentVariable("SONATYPE_PASSWORD").orNull
@@ -123,6 +155,8 @@ publishing {
 }
 
 signing {
-    useGpgCmd()
+    val signingKey = findProperty("signingKey").toString()
+    val signingPassword = findProperty("signingPassword").toString()
+    useInMemoryPgpKeys(signingKey, signingPassword)
     sign(publishing.publications)
 }
