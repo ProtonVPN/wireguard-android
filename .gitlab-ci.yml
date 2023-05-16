@@ -1,5 +1,5 @@
 default:
-  image: ${CI_REGISTRY}/android/shared/docker-android/ndk:v1.1.0
+  image: ${CI_REGISTRY}/android/shared/docker-android/ndk:feat-pin-jdk-snapshot
   before_script:
     - if [[ -f /load-env.sh ]]; then source /load-env.sh; fi
 
