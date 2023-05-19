@@ -42,6 +42,10 @@ import androidx.collection.ArraySet;
  */
 @NonNullForAll
 public final class GoBackend implements Backend {
+
+    private static final int WG_FLAG_NEED_PROTECT = 1;
+    private static final int WG_FLAG_BIT_SHIFT = 16;
+
     private static final int DNS_RESOLUTION_RETRIES = 10;
     private static final String TAG = "WireGuard/GoBackend";
     @Nullable private static AlwaysOnCallback alwaysOnCallback;
@@ -50,6 +54,8 @@ public final class GoBackend implements Backend {
     @Nullable private Config currentConfig;
     @Nullable private Tunnel currentTunnel;
     private int currentTunnelHandle = -1;
+
+    private String currentSocketType;
 
     /**
      * Public constructor for GoBackend.
@@ -168,7 +174,24 @@ public final class GoBackend implements Backend {
     }
 
     public int getState() {
-        return wgGetState(currentTunnelHandle);
+        int flags;
+        int state;
+        do {
+            state = wgGetState(currentTunnelHandle);
+            flags = state >> WG_FLAG_BIT_SHIFT;
+            if (flags != 0) {
+                if (currentSocketType.equalsIgnoreCase("udp") && (flags & WG_FLAG_NEED_PROTECT) == WG_FLAG_NEED_PROTECT) {
+                    try {
+                        VpnService service = vpnService.get(0, TimeUnit.MILLISECONDS);
+                        service.protect(wgGetSocketV4(currentTunnelHandle));
+                        service.protect(wgGetSocketV6(currentTunnelHandle));
+                    } catch (ExecutionException | InterruptedException | TimeoutException e) {
+                        Log.e(TAG, "Unable to get VpnService", e);
+                    }
+                }
+            }
+        } while (flags != 0);
+        return state;
     }
 
     /**
@@ -317,6 +340,7 @@ public final class GoBackend implements Backend {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
                 service.setUnderlyingNetworks(null);
 
+            currentSocketType = socketType;
             builder.setBlocking(true);
             try (final ParcelFileDescriptor tun = builder.establish()) {
                 if (tun == null)
