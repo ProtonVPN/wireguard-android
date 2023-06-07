@@ -90,7 +90,7 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string, socketType str
 	}
 
 	logger.Verbosef("Attaching to interface %v", name)
-	manager := device.NewWireGuardStateManager(logger, socketType, true)
+	manager := device.NewWireGuardStateManager(logger, socketType)
 	device := device.NewDevice(tun, conn.CreateStdNetBind(socketType, &connLogger, manager.SocketErrChan),
 		logger, manager.HandshakeStateChan)
 
