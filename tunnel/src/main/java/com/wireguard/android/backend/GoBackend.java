@@ -190,6 +190,17 @@ public final class GoBackend implements Backend {
         return wgGetState(currentTunnelHandle);
     }
 
+    public static int protectSocket(final int fd) {
+        Log.i(TAG, "Protecting socket fd=" + fd);
+        try {
+            vpnService.get(0, TimeUnit.MILLISECONDS).protect(fd);
+            return 0;
+        } catch (final InterruptedException | ExecutionException | TimeoutException e) {
+            Log.e(TAG, "Unable to get VpnService, socket will not be protected", e);
+            return -1;
+        }
+    }
+
     /**
      * Get the version of the underlying wireguard-go library.
      *
