@@ -7,6 +7,7 @@ package main
 
 // #cgo LDFLAGS: -llog
 // #include <android/log.h>
+// #include "jni_go.h"
 import "C"
 
 import (
@@ -89,9 +90,13 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string, socketType str
 		return -1
 	}
 
+	protectSocket := func(fd int) int {
+		return int(C.protectSocket(C.int(fd)))
+	}
+
 	logger.Verbosef("Attaching to interface %v", name)
 	manager := device.NewWireGuardStateManager(logger, socketType)
-	device := device.NewDevice(tun, conn.CreateStdNetBind(socketType, &connLogger, manager.SocketErrChan),
+	device := device.NewDevice(tun, conn.CreateStdNetBind(socketType, &connLogger, manager.SocketErrChan, protectSocket),
 		logger, manager.HandshakeStateChan)
 
 	err = device.IpcSet(settings)
