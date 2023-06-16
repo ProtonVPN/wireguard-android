@@ -1,5 +1,5 @@
 default:
-  image: ${CI_REGISTRY}/android/shared/docker-android/ndk:feat-pin-jdk-snapshot
+  image: ${CI_REGISTRY}/android/shared/docker-android/ndk:v1.2.0
   before_script:
     - if [[ -f /load-env.sh ]]; then source /load-env.sh; fi
 
@@ -24,7 +24,7 @@ build library:
 publish library:
   stage: publish
   tags:
-    - small
+    - large
   when: manual
   only:
     - /^release\/.+$/
