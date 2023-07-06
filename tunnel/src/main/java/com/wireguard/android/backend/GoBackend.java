@@ -25,6 +25,7 @@ import com.wireguard.util.NonNullForAll;
 
 import java.net.InetAddress;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -83,7 +84,7 @@ public final class GoBackend implements Backend {
     private static native int wgSetNetworkAvailable(int handle, boolean active);
     private static native int wgGetState(int handle);
 
-    private static native int wgTurnOn(String ifName, int tunFd, String settings, String socketType);
+    private static native int wgTurnOn(String ifName, int tunFd, String settings, String socketType, String allowedSrcAddresses);
 
     private static native String wgVersion();
 
@@ -316,8 +317,12 @@ public final class GoBackend implements Backend {
             for (final String includedApplication : config.getInterface().getIncludedApplications())
                 builder.addAllowedApplication(includedApplication);
 
-            for (final InetNetwork addr : config.getInterface().getAddresses())
+            ArrayList<String> allowedSrcAddresses = new ArrayList<>();
+            for (final InetNetwork addr : config.getInterface().getAddresses()) {
                 builder.addAddress(addr.getAddress(), addr.getMask());
+                // We assume here that address is a single IP
+                allowedSrcAddresses.add(addr.getAddress().getHostAddress());
+            }
 
             for (final InetAddress addr : config.getInterface().getDnsServers())
                 builder.addDnsServer(addr.getHostAddress());
@@ -352,7 +357,7 @@ public final class GoBackend implements Backend {
                 if (tun == null)
                     throw new BackendException(Reason.TUN_CREATION_ERROR);
                 Log.d(TAG, "Go backend " + wgVersion());
-                currentTunnelHandle = wgTurnOn(tunnel.getName(), tun.detachFd(), goConfig, socketType);
+                currentTunnelHandle = wgTurnOn(tunnel.getName(), tun.detachFd(), goConfig, socketType, String.join(",", allowedSrcAddresses));
             }
             if (currentTunnelHandle < 0)
                 throw new BackendException(Reason.GO_ACTIVATION_ERROR_CODE, currentTunnelHandle);

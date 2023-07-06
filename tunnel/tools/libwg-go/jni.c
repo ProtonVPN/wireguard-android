@@ -9,7 +9,7 @@
 #include <stdbool.h>
 
 struct go_string { const char *str; long n; };
-extern int wgTurnOn(struct go_string ifname, int tun_fd, struct go_string settings, struct go_string socket_type);
+extern int wgTurnOn(struct go_string ifname, int tun_fd, struct go_string settings, struct go_string socket_type, struct go_string allowed_src_addresses);
 extern void wgTurnOff(int handle);
 extern int wgSetNetworkAvailable(int handle, int available);
 extern int wgGetState(int handle);
@@ -55,7 +55,7 @@ int protectSocket(int fd) {
 	return status;
 }
 
-JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgTurnOn(JNIEnv *env, jclass c, jstring ifname, jint tun_fd, jstring settings, jstring socket_type)
+JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgTurnOn(JNIEnv *env, jclass c, jstring ifname, jint tun_fd, jstring settings, jstring socket_type, jstring allowed_src_addresses)
 {
 	if (gBackendClass == NULL) {
 		gBackendClass = (*env)->NewGlobalRef(env, c);
@@ -67,6 +67,8 @@ JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgTurnOn(JNI
 	size_t settings_len = (*env)->GetStringUTFLength(env, settings);
 	const char *socket_type_str = (*env)->GetStringUTFChars(env, socket_type, 0);
 	size_t socket_type_len = (*env)->GetStringUTFLength(env, socket_type);
+    const char *allowed_src_addresses_str = (*env)->GetStringUTFChars(env, allowed_src_addresses, 0);
+    size_t allowed_src_addresses_len = (*env)->GetStringUTFLength(env, allowed_src_addresses);
 	int ret = wgTurnOn((struct go_string){
 		.str = ifname_str,
 		.n = ifname_len
@@ -76,9 +78,14 @@ JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgTurnOn(JNI
 	}, (struct go_string){
 		.str = socket_type_str,
 		.n = socket_type_len
-	});
+	}, (struct go_string){
+        .str = allowed_src_addresses_str,
+        .n = allowed_src_addresses_len
+    });
 	(*env)->ReleaseStringUTFChars(env, ifname, ifname_str);
 	(*env)->ReleaseStringUTFChars(env, settings, settings_str);
+	(*env)->ReleaseStringUTFChars(env, socket_type, socket_type_str);
+    (*env)->ReleaseStringUTFChars(env, allowed_src_addresses, allowed_src_addresses_str);
 	return ret;
 }
 

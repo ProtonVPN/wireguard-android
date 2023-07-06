@@ -75,7 +75,7 @@ func init() {
 }
 
 //export wgTurnOn
-func wgTurnOn(interfaceName string, tunFd int32, settings string, socketType string) int32 {
+func wgTurnOn(interfaceName string, tunFd int32, settings string, socketType string, allowedSrcAddresses string) int32 {
 	tag := cstring("WireGuard/GoBackend/" + interfaceName)
 	connLogger := conn.Logger{
 		Verbosef: AndroidLogger{level: C.ANDROID_LOG_DEBUG, tag: tag}.Printf,
@@ -97,7 +97,7 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string, socketType str
 	logger.Verbosef("Attaching to interface %v", name)
 	manager := device.NewWireGuardStateManager(logger, socketType)
 	device := device.NewDevice(tun, conn.CreateStdNetBind(socketType, &connLogger, manager.SocketErrChan, protectSocket),
-		logger, manager.HandshakeStateChan)
+		logger, manager.HandshakeStateChan, allowedSrcAddresses)
 
 	err = device.IpcSet(settings)
 	if err != nil {
