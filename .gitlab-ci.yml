@@ -1,5 +1,5 @@
 default:
-  image: ${CI_REGISTRY}/android/shared/docker-android/ndk:v1.2.0
+  image: ${CI_REGISTRY}/android/shared/docker-android/oci-ndk:v2.0.0
   before_script:
     - if [[ -f /load-env.sh ]]; then source /load-env.sh; fi
 
@@ -13,7 +13,7 @@ stages:
 build library:
   stage: build
   tags:
-    - large
+    - shared-large
   script:
     - ./gradlew :tunnel:assembleRelease
   artifacts:
@@ -24,7 +24,7 @@ build library:
 publish library:
   stage: publish
   tags:
-    - large
+    - shared-large
   when: manual
   only:
     - /^release\/.+$/
