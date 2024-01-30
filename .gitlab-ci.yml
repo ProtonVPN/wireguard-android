@@ -33,6 +33,8 @@ publish library:
 
 sync-wireguard-android:
   stage: publish
+  tags:
+    - shared-medium
   only:
     refs:
       - /^release\/.*/
