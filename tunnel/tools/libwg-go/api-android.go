@@ -19,6 +19,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"unsafe"
 
 	"golang.org/x/sys/unix"
@@ -53,6 +54,7 @@ type TunnelHandle struct {
 }
 
 var tunnelHandles map[int32]TunnelHandle
+var tunnelHandlesMutex sync.Mutex
 
 func init() {
 	tunnelHandles = make(map[int32]TunnelHandle)
@@ -130,6 +132,8 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string, socketType str
 		}
 	}
 
+	tunnelHandlesMutex.Lock()
+	defer tunnelHandlesMutex.Unlock()
 	var i int32
 	for i = 0; i < math.MaxInt32; i++ {
 		if _, exists := tunnelHandles[i]; !exists {
@@ -147,13 +151,31 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string, socketType str
 	return i
 }
 
+func getAndDeleteHandle(tunnelHandle int32) (TunnelHandle, bool) {
+	tunnelHandlesMutex.Lock()
+	defer tunnelHandlesMutex.Unlock()
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		return TunnelHandle{}, ok
+	}
+	delete(tunnelHandles, tunnelHandle)
+	return handle, ok
+}
+
+func getTunnelHandleWithLock(tunnelHandle int32) (TunnelHandle, bool) {
+	tunnelHandlesMutex.Lock()
+	defer tunnelHandlesMutex.Unlock()
+	handle, ok := tunnelHandles[tunnelHandle]
+	return handle, ok
+}
+
 //export wgTurnOff
 func wgTurnOff(tunnelHandle int32) {
-	handle, ok := tunnelHandles[tunnelHandle]
+	handle, ok := getAndDeleteHandle(tunnelHandle)
 	if !ok {
 		return
 	}
-	delete(tunnelHandles, tunnelHandle)
+	
 	if handle.uapi != nil {
 		handle.uapi.Close()
 	}
@@ -163,7 +185,7 @@ func wgTurnOff(tunnelHandle int32) {
 
 //export wgSetNetworkAvailable
 func wgSetNetworkAvailable(tunnelHandle int32, available int) int {
-	handle, ok := tunnelHandles[tunnelHandle]
+	handle, ok := getTunnelHandleWithLock(tunnelHandle)
 	if !ok {
 		return -1
 	}
@@ -173,7 +195,7 @@ func wgSetNetworkAvailable(tunnelHandle int32, available int) int {
 
 //export wgGetState
 func wgGetState(tunnelHandle int32) int {
-	handle, ok := tunnelHandles[tunnelHandle]
+	handle, ok := getTunnelHandleWithLock(tunnelHandle)
 	if !ok {
 		return -1
 	}
@@ -182,7 +204,7 @@ func wgGetState(tunnelHandle int32) int {
 
 //export wgGetSocketV4
 func wgGetSocketV4(tunnelHandle int32) int32 {
-	handle, ok := tunnelHandles[tunnelHandle]
+	handle, ok := getTunnelHandleWithLock(tunnelHandle)
 	if !ok {
 		return -1
 	}
@@ -199,7 +221,7 @@ func wgGetSocketV4(tunnelHandle int32) int32 {
 
 //export wgGetSocketV6
 func wgGetSocketV6(tunnelHandle int32) int32 {
-	handle, ok := tunnelHandles[tunnelHandle]
+	handle, ok := getTunnelHandleWithLock(tunnelHandle)
 	if !ok {
 		return -1
 	}
@@ -216,7 +238,7 @@ func wgGetSocketV6(tunnelHandle int32) int32 {
 
 //export wgGetConfig
 func wgGetConfig(tunnelHandle int32) *C.char {
-	handle, ok := tunnelHandles[tunnelHandle]
+	handle, ok := getTunnelHandleWithLock(tunnelHandle)
 	if !ok {
 		return nil
 	}
