@@ -1,0 +1,6 @@
+# ownership: loose
+*	@ProtonVPN/groups/android-developers 
+/.idea/	@ProtonVPN/groups/android-developers 
+/gradle/	@ProtonVPN/groups/android-developers 
+/tunnel/	@ProtonVPN/groups/android-developers 
+/ui/	@ProtonVPN/groups/android-developers 
