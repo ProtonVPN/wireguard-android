@@ -46,36 +46,38 @@ android {
     defaultConfig {
         minSdk = 21
     }
-    externalNativeBuild {
-        cmake {
-            path("tools/CMakeLists.txt")
-        }
-    }
+    // Don't build any native libs, WireGuard Go is supplied via the go-vpn-lib.
+    // The code is commented out and not removed to make it easier to see and handle conflicts when updating.
+//    externalNativeBuild {
+//        cmake {
+//            path("tools/CMakeLists.txt")
+//        }
+//    }
     testOptions.unitTests.all {
         it.testLogging { events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED) }
     }
     buildTypes {
         all {
-            externalNativeBuild {
-                cmake {
-                    targets("libwg-go.so", "libwg.so", "libwg-quick.so")
-                    arguments("-DGRADLE_USER_HOME=${project.gradle.gradleUserHomeDir}")
-                }
-            }
+//            externalNativeBuild {
+//                cmake {
+//                    targets("libwg-go.so", "libwg.so", "libwg-quick.so")
+//                    arguments("-DGRADLE_USER_HOME=${project.gradle.gradleUserHomeDir}")
+//                }
+//            }
         }
         release {
-            externalNativeBuild {
-                cmake {
-                    arguments("-DANDROID_PACKAGE_NAME=${pkg}")
-                }
-            }
+//            externalNativeBuild {
+//                cmake {
+//                    arguments("-DANDROID_PACKAGE_NAME=${pkg}")
+//                }
+//            }
         }
         debug {
-            externalNativeBuild {
-                cmake {
-                    arguments("-DANDROID_PACKAGE_NAME=${pkg}.debug")
-                }
-            }
+//            externalNativeBuild {
+//                cmake {
+//                    arguments("-DANDROID_PACKAGE_NAME=${pkg}.debug")
+//                }
+//            }
         }
     }
     lint {
@@ -94,6 +96,7 @@ dependencies {
     implementation(libs.androidx.annotation)
     implementation(libs.androidx.collection)
     compileOnly(libs.jsr305)
+    compileOnly("me.proton.vpn:go-vpn-lib:0.1.59")
     testImplementation(libs.junit)
 }
 

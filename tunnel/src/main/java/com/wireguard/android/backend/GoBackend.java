@@ -12,9 +12,9 @@ import android.os.ParcelFileDescriptor;
 import android.system.OsConstants;
 import android.util.Log;
 
+import com.proton.gopenpgp.wgAndroid.WgAndroid;
 import com.wireguard.android.backend.BackendException.Reason;
 import com.wireguard.android.backend.Tunnel.State;
-import com.wireguard.android.util.SharedLibraryLoader;
 import com.wireguard.config.Config;
 import com.wireguard.config.InetEndpoint;
 import com.wireguard.config.InetNetwork;
@@ -24,7 +24,6 @@ import com.wireguard.crypto.KeyFormatException;
 import com.wireguard.util.NonNullForAll;
 
 import java.net.InetAddress;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
@@ -59,7 +58,8 @@ public final class GoBackend implements Backend {
      * @param context An Android {@link Context}
      */
     public GoBackend(final Context context) {
-        SharedLibraryLoader.loadSharedLibrary(context, "wg-go");
+        // The JNI interface is replaced with gomobile interface in wgAndroid class.
+//        SharedLibraryLoader.loadSharedLibrary(context, "wg-go");
         this.context = context;
     }
 
@@ -73,20 +73,21 @@ public final class GoBackend implements Backend {
         alwaysOnCallback = cb;
     }
 
-    @Nullable private static native String wgGetConfig(int handle);
-
-    private static native int wgGetSocketV4(int handle);
-
-    private static native int wgGetSocketV6(int handle);
-
-    private static native void wgTurnOff(int handle);
-
-    private static native int wgSetNetworkAvailable(int handle, boolean active);
-    private static native int wgGetState(int handle);
-
-    private static native int wgTurnOn(String ifName, int tunFd, String settings, String socketType, String allowedSrcAddresses);
-
-    private static native String wgVersion();
+    // The JNI interface is replaced with gomobile interface in wgAndroid class.
+//    @Nullable private static native String wgGetConfig(int handle);
+//
+//    private static native int wgGetSocketV4(int handle);
+//
+//    private static native int wgGetSocketV6(int handle);
+//
+//    private static native void wgTurnOff(int handle);
+//
+//    private static native int wgSetNetworkAvailable(int handle, boolean active);
+//    private static native int wgGetState(int handle);
+//
+//    private static native int wgTurnOn(String ifName, int tunFd, String settings, String socketType, String allowedSrcAddresses);
+//
+//    private static native String wgVersion();
 
     /**
      * Method to get the names of running tunnels.
@@ -125,8 +126,8 @@ public final class GoBackend implements Backend {
         final Statistics stats = new Statistics();
         if (tunnel != currentTunnel || currentTunnelHandle == -1)
             return stats;
-        final String config = wgGetConfig(currentTunnelHandle);
-        if (config == null)
+        final String config = WgAndroid.wgGetConfig(currentTunnelHandle);
+        if (config.equals(""))
             return stats;
         Key key = null;
         long rx = 0;
@@ -184,21 +185,23 @@ public final class GoBackend implements Backend {
     }
 
     public void setNetworkAvailable(final boolean available) {
-        wgSetNetworkAvailable(currentTunnelHandle, available);
+        WgAndroid.wgSetNetworkAvailable(currentTunnelHandle, available);
     }
 
     public int getState() {
-        return wgGetState(currentTunnelHandle);
+        return (int) WgAndroid.wgGetState(currentTunnelHandle);
     }
 
-    public static int protectSocket(final int fd) {
-        Log.i(TAG, "Protecting socket fd=" + fd);
-        try {
-            vpnService.get(0, TimeUnit.MILLISECONDS).protect(fd);
-            return 0;
-        } catch (final InterruptedException | ExecutionException | TimeoutException e) {
-            Log.e(TAG, "Unable to get VpnService, socket will not be protected", e);
-            return -1;
+    private static class SocketProtector implements com.proton.gopenpgp.wgAndroid.SocketProtector {
+
+        @Override public boolean protectFromVpn(final int fd) {
+            Log.i(TAG, "Protecting socket fd=" + fd);
+            try {
+                return vpnService.get(0, TimeUnit.MILLISECONDS).protect((int) fd);
+            } catch (final InterruptedException | ExecutionException | TimeoutException e) {
+                Log.e(TAG, "Unable to get VpnService, socket will not be protected", e);
+                return false;
+            }
         }
     }
 
@@ -209,7 +212,7 @@ public final class GoBackend implements Backend {
      */
     @Override
     public String getVersion() {
-        return wgVersion();
+        return WgAndroid.wgVersion();
     }
 
     /**
@@ -356,8 +359,8 @@ public final class GoBackend implements Backend {
             try (final ParcelFileDescriptor tun = builder.establish()) {
                 if (tun == null)
                     throw new BackendException(Reason.TUN_CREATION_ERROR);
-                Log.d(TAG, "Go backend " + wgVersion());
-                currentTunnelHandle = wgTurnOn(tunnel.getName(), tun.detachFd(), goConfig, socketType, String.join(",", allowedSrcAddresses));
+                Log.d(TAG, "Go backend " + WgAndroid.wgVersion());
+                currentTunnelHandle = WgAndroid.wgTurnOn(tunnel.getName(), tun.detachFd(), goConfig, socketType, new SocketProtector(), String.join(",", allowedSrcAddresses));
             }
             if (currentTunnelHandle < 0)
                 throw new BackendException(Reason.GO_ACTIVATION_ERROR_CODE, currentTunnelHandle);
@@ -373,7 +376,7 @@ public final class GoBackend implements Backend {
             currentTunnel = null;
             currentTunnelHandle = -1;
             currentConfig = null;
-            wgTurnOff(handleToClose);
+            WgAndroid.wgTurnOff(handleToClose);
             try {
                 vpnService.get(0, TimeUnit.NANOSECONDS).stopSelf();
             } catch (final TimeoutException ignored) { }
@@ -441,7 +444,7 @@ public final class GoBackend implements Backend {
                 final Tunnel tunnel = owner.currentTunnel;
                 if (tunnel != null) {
                     if (owner.currentTunnelHandle != -1)
-                        wgTurnOff(owner.currentTunnelHandle);
+                        WgAndroid.wgTurnOff(owner.currentTunnelHandle);
                     owner.currentTunnel = null;
                     owner.currentTunnelHandle = -1;
                     owner.currentConfig = null;
