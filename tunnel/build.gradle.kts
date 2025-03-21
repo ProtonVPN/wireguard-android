@@ -96,7 +96,7 @@ dependencies {
     implementation(libs.androidx.annotation)
     implementation(libs.androidx.collection)
     compileOnly(libs.jsr305)
-    compileOnly("me.proton.vpn:go-vpn-lib:0.1.59")
+    compileOnly("me.proton.vpn:go-vpn-lib:0.1.62")
     testImplementation(libs.junit)
 }
 

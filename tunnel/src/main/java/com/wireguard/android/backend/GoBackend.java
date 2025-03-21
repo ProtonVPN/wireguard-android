@@ -227,11 +227,11 @@ public final class GoBackend implements Backend {
      */
     @Override
     public State setState(final Tunnel tunnel, State state, @Nullable final Config config) throws Exception {
-        return setState(tunnel, state, config, "udp");
+        return setState(tunnel, state, config, "udp", 0);
     }
 
     public State setState(final Tunnel tunnel, State state, @Nullable final Config config,
-                          @NonNull final String socketType) throws Exception {
+                          @NonNull final String socketType, final int serverNameStrategy) throws Exception {
         final State originalState = getState(tunnel);
 
         if (state == State.TOGGLE)
@@ -242,22 +242,23 @@ public final class GoBackend implements Backend {
             final Config originalConfig = currentConfig;
             final Tunnel originalTunnel = currentTunnel;
             if (currentTunnel != null)
-                setStateInternal(currentTunnel, null, State.DOWN, socketType);
+                setStateInternal(currentTunnel, null, State.DOWN, socketType, serverNameStrategy);
             try {
-                setStateInternal(tunnel, config, state, socketType);
+                setStateInternal(tunnel, config, state, socketType, serverNameStrategy);
             } catch (final Exception e) {
                 if (originalTunnel != null)
-                    setStateInternal(originalTunnel, originalConfig, State.UP, socketType);
+                    setStateInternal(originalTunnel, originalConfig, State.UP, socketType, serverNameStrategy);
                 throw e;
             }
         } else if (state == State.DOWN && tunnel == currentTunnel) {
-            setStateInternal(tunnel, null, State.DOWN, socketType);
+            setStateInternal(tunnel, null, State.DOWN, socketType, serverNameStrategy);
         }
         return getState(tunnel);
     }
 
     private void setStateInternal(final Tunnel tunnel, @Nullable final Config config,
-                                  final State state, @NonNull final String socketType)
+                                  final State state, @NonNull final String socketType,
+                                  final int serverNameStrategy)
             throws Exception {
         Log.i(TAG, "Bringing tunnel " + tunnel.getName() + ' ' + state);
 
@@ -360,7 +361,7 @@ public final class GoBackend implements Backend {
                 if (tun == null)
                     throw new BackendException(Reason.TUN_CREATION_ERROR);
                 Log.d(TAG, "Go backend " + WgAndroid.wgVersion());
-                currentTunnelHandle = WgAndroid.wgTurnOn(tunnel.getName(), tun.detachFd(), goConfig, socketType, new SocketProtector(), String.join(",", allowedSrcAddresses));
+                currentTunnelHandle = WgAndroid.wgTurnOn(tunnel.getName(), tun.detachFd(), goConfig, socketType, new SocketProtector(), String.join(",", allowedSrcAddresses), serverNameStrategy);
             }
             if (currentTunnelHandle < 0)
                 throw new BackendException(Reason.GO_ACTIVATION_ERROR_CODE, currentTunnelHandle);
